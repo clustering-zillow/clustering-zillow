@@ -71,11 +71,23 @@ def zillow_impute_knn(df):
     df = zillow_impute_census(df)
     return df
 
-
-def wrangle_zillow(df):
-    df = single_units(df)
-    df = handle_missing_values(df, prop_required_column = .5, prop_required_row = .70)
-    df = zillow_impute(df)
-    df['fips']=df[['fips']].replace({6037.0:'Los_Angeles_county',6059.0:'Orange_county', 6111: 'Ventura_county'})
+def add_zip_income(df):
+    income = pd.read_csv('zipcode_income.csv')
+    income = income.rename(columns = {'Median $': 'median_income'}) 
+    income1 = income[['regionidzip', 'new_zip']]
+    zip_dict = dict(zip(income1.regionidzip, income1.new_zip))
+    income2 = income[['regionidzip', 'median_income']]
+    zip_income = dict(zip(income2.regionidzip, income2.median_income))
+    df['new_zip'] = df['regionid_zip'].map(zip_dict)
+    df['median_income'] = df['regionid_zip'].map(zip_income)
     return df
+
+
+
+# def wrangle_zillow(df):
+#     df = single_units(df)
+#     df = handle_missing_values(df, prop_required_column = .5, prop_required_row = .70)
+#     df = zillow_impute(df)
+#     df['fips']=df[['fips']].replace({6037.0:'Los_Angeles_county',6059.0:'Orange_county', 6111: 'Ventura_county'})
+#     return df
 

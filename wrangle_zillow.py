@@ -1,7 +1,13 @@
 import numpy as np
 import pandas as pd
+
+# Impute missing values
+from sklearn.experimental import enable_iterative_imputer
+from sklearn.impute import IterativeImputer
+
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
+import wrangle_zillow_r
 
 def missing_rows(df):
     new_df = pd.DataFrame(df.isna().sum())
@@ -33,6 +39,7 @@ def numeric_to_object(df, num_cols):
     Changes the type of each column in the list to object type.
     """
     for col in num_cols:
+        df[col] = df[col].astype('int')
         df[col] = df[col].astype('object')
     return df
 
@@ -45,10 +52,34 @@ def numeric_to_int(df, num_cols):
         df[col] = df[col].astype('int')
     return df
 
+def fill_nulls_with_zero(df, col_names):
+    for col in col_names:
+        df[col] = df[col].fillna(0)
+    return df
+
+def handle_other_nulls(df):
+    df.heatingorsystemtypeid.fillna(13, inplace=True)
+    df.numberofstories.fillna(1, inplace=True)
+    df.unitcnt.fillna(1, inplace=True)
+    return df
+
+def zillow_imputer(df):
+    num_vars = list(df.select_dtypes('number').columns)
+    imp = IterativeImputer(random_state=423)
+    imp.fit(df[num_vars])
+    df[num_vars] = imp.transform(df[num_vars])
+    return df
+
+def outlier_function(df, cols):
+    for col in df[cols]:
+        mean = df[col].mean()
+        std = (df[col].std() + 0.0001) 
+        # just in case the std is 0, add a small amount to avoid the divide by zero error
+        df = df[df[col] < (mean + (3*std))]
+    return df
+
 def wrangle_zillow():
     df = pd.read_csv('zillow.csv', index_col='id')
-    # drop extra column that comes in from csv files
-    df = df.drop(columns='Unnamed: 0')
     
     # Restrict df to only properties that meet single use criteria
     single_use = [261, 262, 263, 264, 266, 268, 273, 276, 279]
@@ -57,8 +88,17 @@ def wrangle_zillow():
     # Restrict df to only those properties with at least 1 bath & bed
     df = df[(df.bedroomcnt > 0) & (df.bathroomcnt > 0)]
     
+    # Impute location columns and info
+    df = wrangle_zillow_r.zillow_impute_knn(df)
+    
+    # Add column for counties
+    df['county'] = np.where(df.fips == 6037, 'Los_Angeles',
+                           np.where(df.fips == 6059, 'Orange', 
+                                   'Ventura'))
+    
     # drop unnecessary columns
-    df = remove_columns(df, ['architecturalstyletypeid',
+    df = remove_columns(df, ['parcelid',
+                             'architecturalstyletypeid',
                              'buildingclasstypeid',
                              'finishedsquarefeet13',
                              'finishedsquarefeet15',
@@ -83,83 +123,62 @@ def wrangle_zillow():
                              'typeconstructiontypeid',
                              'storytypeid',
                              'propertyzoningdesc', 
-                            'calculatedfinishedsquarefeet', 
+                             'calculatedfinishedsquarefeet', 
                              'regionidneighborhood',
                              'regionidcity',
                              'regionidcounty',
                              'propertylandusetypeid',
                              'rawcensustractandblock',
                              'propertylandusedesc',
-                            'assessmentyear'])
+                             'assessmentyear',
+                             'fips'])
 
     # Replace Y in taxdelinquencyflag with 1
     df.taxdelinquencyflag = np.where(df.taxdelinquencyflag == 'Y', 1, 0)
     
     # fill nulls with 0 
-    df.airconditioningtypeid.fillna(0, inplace=True)
-    df.basementsqft.fillna(0, inplace=True)
-    df.decktypeid.fillna(0, inplace=True)
-    df.fireplacecnt.fillna(0, inplace=True)
-    df.garagecarcnt.fillna(0, inplace=True)
-    df.garagetotalsqft.fillna(0, inplace=True)
-    df.hashottuborspa.fillna(0, inplace=True)
-    df.lotsizesquarefeet.fillna(0, inplace=True)
-    df.poolcnt.fillna(0, inplace=True)
-    df.poolsizesum.fillna(0, inplace=True)
-    df.taxdelinquencyyear.fillna(0, inplace=True)
+    null_cols = ['airconditioningtypeid', 'basementsqft', 'decktypeid',
+             'fireplacecnt', 'garagecarcnt', 'garagetotalsqft',
+             'hashottuborspa', 'lotsizesquarefeet', 'poolcnt',
+             'poolsizesum', 'taxdelinquencyyear']
+
+    df = fill_nulls_with_zero(df, null_cols)
     
-    # For heating type, None = 13
-    df.heatingorsystemtypeid.fillna(13, inplace=True)
+    #Fill nulls with most common value
+    df = handle_other_nulls(df)
     
-    # Fill nulls with most common value
-    df.numberofstories.fillna(1, inplace=True)
-    df.unitcnt.fillna(1, inplace=True)
-    df.yearbuilt.fillna(1955, inplace=True)
-    
-    # This piece bothers me: I'd rather fill in with a range of values based on the other features
-    # Do more exploration on this feature
-    df.buildingqualitytypeid.fillna(6, inplace=True)
-    
-    # Drop rows with null values in certain columns
-    df = df.dropna(subset=['structuretaxvaluedollarcnt',
-                           'taxvaluedollarcnt',
-                           'taxamount',
-                           'censustractandblock',
-                           'regionidzip',
-                           'finishedsquarefeet12'])
+    # Impute null values still remaining
+    df = zillow_imputer(df)
     
     # set type for each column
-    df = numeric_to_object(df, ['fips',
-                                'propertycountylandusecode',
-                                'regionidcounty',
-                                'regionidzip',
-                                'censustractandblock'])
-    df = numeric_to_int(df, ['airconditioningtypeid',
-                             'basementsqft',
-                             'bedroomcnt',
-                             'buildingqualitytypeid',
-                             'decktypeid',
-                             'finishedsquarefeet12',
-                             'fireplacecnt',
-                             'garagecarcnt',
-                             'garagetotalsqft',
-                             'hashottuborspa',
-                             'heatingorsystemtypeid',
-                             'lotsizesquarefeet',
-                             'poolcnt',
-                             'poolsizesum',
-                             'roomcnt',
-                             'unitcnt',
-                             'yearbuilt',
-                             'numberofstories',
-                             'assessmentyear',
-                             'taxdelinquencyflag',
-                             'taxdelinquencyyear'])
+    # transform float cols to int
+    int_cols = ['basementsqft', 'bathroomcnt', 'bedroomcnt', 
+                'finishedsquarefeet12', 'fireplacecnt',
+                'garagecarcnt', 'garagetotalsqft', 'hashottuborspa',
+                'lotsizesquarefeet', 'poolcnt', 'poolsizesum',
+                'roomcnt', 'unitcnt', 'yearbuilt', 'numberofstories',
+                'structuretaxvaluedollarcnt', 'taxvaluedollarcnt',
+                'landtaxvaluedollarcnt', 'taxamount',
+                'taxdelinquencyflag', 'taxdelinquencyyear']
 
-    # Add column for counties
-    df['county'] = np.where(df.fips == 6037, 'Los_Angeles',
-                           np.where(df.fips == 6059, 'Orange', 
-                                   'Ventura'))
+    df = numeric_to_int(df, int_cols)
+
+    # transform float cols to object
+    obj_cols = ['airconditioningtypeid', 'buildingqualitytypeid',
+                'decktypeid', 'heatingorsystemtypeid']
+
+    df = numeric_to_object(df, obj_cols)
+
+    # check for outliers and remove
+    # Columns to look for outliers
+    outliers = ['basementsqft', 'bathroomcnt', 'bedroomcnt',
+                'finishedsquarefeet12', 'garagetotalsqft',
+                'lotsizesquarefeet', 'poolsizesum',
+                'roomcnt', 'structuretaxvaluedollarcnt',
+                'taxvaluedollarcnt', 'landtaxvaluedollarcnt',
+                'taxamount']
+    df = outlier_function(df, outliers)
+    
     return df
     
 def split_my_data(df, train_pct):
@@ -170,7 +189,7 @@ def split_my_data(df, train_pct):
     When using this function, in order to have usable datasets, be sure to call it thusly:
     train, test = split_my_data(df, train_pct)
     '''
-    return train_test_split(df, train_size = train_pct, random_state = 294)
+    return train_test_split(df, train_size = train_pct, random_state = 539)
 
 def min_max_scaler(train, test):
     '''

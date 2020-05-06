@@ -91,6 +91,9 @@ def wrangle_zillow():
     # Impute location columns and info
     df = wrangle_zillow_r.zillow_impute_knn(df)
     
+    # Add median income and correct zip code
+    df = wrangle_zillow_r.add_zip_income(df)
+    
     # Add column for counties
     df['county'] = np.where(df.fips == 6037, 'Los_Angeles',
                            np.where(df.fips == 6059, 'Orange', 

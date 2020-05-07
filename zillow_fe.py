@@ -57,7 +57,20 @@ def cluster_features(df, k):
     kmeans.fit(group1)
     kmeans.predict(group1)
     df['cluster_fancy'] = kmeans.predict(group1)
+    
+    # get the centroids for each distinct cluster...
+    cluster_col_name = 'cluster_fancy'
+    centroid_col_names = ['centroid_' + i for i in group1]
+    centroids = pd.DataFrame(kmeans.cluster_centers_, columns=centroid_col_names).reset_index()
+    centroids.rename(columns = {'index': cluster_col_name}, inplace = True)
+    
+    # merge the centroids with the df
+    df = df.merge(centroids, how='left',
+                  on=cluster_col_name).set_index(df.index)
+    
+    # Make cluster assignments string
     df['cluster_fancy'] = 'cluster_' + df.cluster_fancy.astype(str)
+    
     df = df.drop(columns=['buildingqualitytypeid', 'roomcnt', 'is_extra'])
     
     group2 = df[['lotsizesquarefeet', 'landtaxvaluedollarcnt', 'new_zip']]
@@ -68,8 +81,22 @@ def cluster_features(df, k):
     kmeans.fit(g2_scaled)
     kmeans.predict(g2_scaled)
     df['cluster_lot'] = kmeans.predict(g2_scaled)
+    
+    # get the centroids for each distinct cluster...
+    cluster_col_name = 'cluster_lot'
+    centroid_col_names = ['centroid_' + i for i in group2]
+    centroids = pd.DataFrame(kmeans.cluster_centers_, columns=centroid_col_names).reset_index()
+    centroids.rename(columns = {'index': cluster_col_name}, inplace = True)
+    
+    # merge the centroids with the df
+    df = df.merge(centroids, how='left',
+                  on=cluster_col_name).set_index(df.index)
+    
+    # Make cluster assignments string
     df['cluster_lot'] = 'cluster_' + df.cluster_lot.astype(str)
+
     df = df.drop(columns=['lotsizesquarefeet', 'landtaxvaluedollarcnt'])
+    
     return df
     
 

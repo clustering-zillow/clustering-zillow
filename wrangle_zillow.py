@@ -200,7 +200,7 @@ def split_my_data(df, train_pct):
     '''
     return train_test_split(df, train_size = train_pct, random_state = 539)
 
-def min_max_scaler(train, test):
+def min_max_scaler(train, valid, test):
     '''
     Uses the train & test datasets created by the split_my_data function
     Returns 3 items: mm_scaler, train_scaled_mm, test_scaled_mm
@@ -210,7 +210,8 @@ def min_max_scaler(train, test):
     num_vars = list(train.select_dtypes('number').columns)
     scaler = MinMaxScaler(copy=True, feature_range=(0,1))
     train[num_vars] = scaler.fit_transform(train[num_vars])
+    valid[num_vars] = scaler.fit_transform(valid[num_vars])
     test[num_vars] = scaler.transform(test[num_vars])
-    return scaler, train, test
+    return scaler, train, valid, test
 
 

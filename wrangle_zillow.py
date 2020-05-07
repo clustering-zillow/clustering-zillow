@@ -150,6 +150,9 @@ def wrangle_zillow():
     #Fill nulls with most common value
     df = handle_other_nulls(df)
     
+    # Drop anything with more than 1 unit
+    df = df[df.unitcnt < 2]
+    
     # Impute null values still remaining
     df = zillow_imputer(df)
     
@@ -181,6 +184,9 @@ def wrangle_zillow():
                 'taxvaluedollarcnt', 'landtaxvaluedollarcnt',
                 'taxamount']
     df = outlier_function(df, outliers)
+    
+    # Just to be sure we caught all nulls, drop them here
+    df = df.dropna()
     
     return df
     

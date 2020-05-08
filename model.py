@@ -110,4 +110,22 @@ def GAM_model(df, feature_list):
     R2 = float('{:.3f}'.format(r2_score(y_pred.actual, y_pred.predicted)))
     return RMSE, R2
 
+def run_all_functions(df, features):
+    index = ['Baseline', 'Linear_model', 'polynomial_LR', 'GAM']
+    columns = [ 'RMSE', 'R2']
+    df1 = pd.DataFrame(index=index, columns=columns)
+    df1 = df1.fillna(0) # with 0s rather than NaNs
+    df1.loc['Baseline', 'RMSE'] = 0.162
+    df1.loc['Baseline', 'R2'] = 0
+    RMSE, R2 = linear_reg(df,features)
+    df1.loc['Linear_model', 'RMSE'] = RMSE
+    df1.loc['Linear_model', 'R2'] = R2
+    RMSE, R2 = poly_regression(df,features, 6)
+    df1.loc['polynomial_LR', 'RMSE'] = RMSE
+    df1.loc['polynomial_LR', 'R2'] = R2
+    RMSE, R2 = GAM_model(df,features)
+    df1.loc['GAM', 'RMSE'] = RMSE
+    df1.loc['GAM', 'R2'] = R2
+    return df1
+
 

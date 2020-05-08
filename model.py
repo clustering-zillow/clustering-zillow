@@ -78,3 +78,36 @@ def poly_regression(df, feature_list, n ):
     RMSE = float('{:.3f}'.format(sqrt(mean_squared_error(y_train.logerror, y_train.predicted_poly))))
     R2 = float('{:.3f}'.format(r2_score(y_train.logerror, y_train.predicted_poly)))
     return RMSE, R2
+
+def linear_reg(df, feature_list):
+
+    X_train = df[feature_list]
+    y_train = df[['logerror']]
+    scaler = MinMaxScaler(copy=True, feature_range=(0,1)).fit(X_train)
+    X_scaled = pd.DataFrame(scaler.transform(X_train), columns=X_train.columns.values).set_index([X_train.index.values])
+    lm = LinearRegression()
+    lm.fit(X_scaled, y_train)
+    y_train['predicted'] = lm.predict(X_scaled)
+    RMSE = float('{:.3f}'.format(sqrt(mean_squared_error(y_train.logerror, y_train.predicted))))
+    R2 = float('{:.3f}'.format(r2_score(y_train.logerror, y_train.predicted)))
+    return RMSE, R2
+
+def GAM_model(df, feature_list):
+    X_train = df[feature_list]
+    y_train = df[['logerror']]
+    scaler = MinMaxScaler(copy=True, feature_range=(0,1)).fit(X_train)
+    X_scaled = pd.DataFrame(scaler.transform(X_train), columns=X_train.columns.values).set_index([X_train.index.values])
+    X_scaled= X_scaled.to_numpy()
+    y_train = y_train.to_numpy()
+    from pygam import LinearGAM, s, f, te
+    gam = LinearGAM(s(0) +s(1) +s(2) + s(3) +s(4) +s(5))
+    gam.gridsearch(X_scaled,y_train)
+    y_pred = gam.predict(X_scaled)
+    y_pred = pd.DataFrame(y_pred)
+    y_pred['actual'] =y_train
+    y_pred.columns = ['predicted', 'actual']
+    RMSE = float('{:.3f}'.format(sqrt(mean_squared_error(y_pred.actual, y_pred.predicted))))
+    R2 = float('{:.3f}'.format(r2_score(y_pred.actual, y_pred.predicted)))
+    return RMSE, R2
+
+

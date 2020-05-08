@@ -80,9 +80,14 @@ def add_zip_income(df):
     zip_income = dict(zip(income2.regionidzip, income2.median_income))
     df['new_zip'] = df['regionid_zip'].map(zip_dict)
     df['median_income'] = df['regionid_zip'].map(zip_income)
+
     return df
 
-
+def fix_med(df):
+    df = df.dropna()
+    df['median_income'] = df.median_income.str.strip()
+    df['median_income'] = df.median_income.str.replace(',', '').astype(float)
+    return df
 
 # def wrangle_zillow(df):
 #     df = single_units(df)

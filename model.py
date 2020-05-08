@@ -77,7 +77,7 @@ def poly_regression(df, feature_list, n ):
     y_train['predicted_poly'] = lm_poly.predict(X_poly)
     RMSE = float('{:.3f}'.format(sqrt(mean_squared_error(y_train.logerror, y_train.predicted_poly))))
     R2 = float('{:.3f}'.format(r2_score(y_train.logerror, y_train.predicted_poly)))
-    return RMSE, R2
+    return RMSE, R2, y_train
 
 def linear_reg(df, feature_list):
 
@@ -115,8 +115,9 @@ def run_all_functions(df, features):
     columns = [ 'RMSE', 'R2']
     df1 = pd.DataFrame(index=index, columns=columns)
     df1 = df1.fillna(0) # with 0s rather than NaNs
-    df1.loc['Baseline', 'RMSE'] = 0.162
-    df1.loc['Baseline', 'R2'] = 0
+    df['base_logerror'] = df.logerror.mean()
+    df1.loc['Baseline', 'RMSE'] = sqrt(mean_squared_error(df.logerror,df.base_logerror))
+    df1.loc['Baseline', 'R2'] = sqrt(r2_score(df.logerror,df.base_logerror))
     RMSE, R2 = linear_reg(df,features)
     df1.loc['Linear_model', 'RMSE'] = RMSE
     df1.loc['Linear_model', 'R2'] = R2

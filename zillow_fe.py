@@ -95,7 +95,7 @@ def cluster_features(df, k):
     # Make cluster assignments string
     df['cluster_lot'] = 'cluster_' + df.cluster_lot.astype(str)
 
-    df = df.drop(columns=['lotsizesquarefeet', 'landtaxvaluedollarcnt'])
+    df = df.drop(columns=[ 'landtaxvaluedollarcnt'])
     
     return df
     
